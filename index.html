@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e88e5">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Forca Inglês — Níveis e Ranking</title>
+<style>
+  :root{
+    --primary:#1e88e5;
+    --accent:#ff9800;
+    --bg:#f5f7fb;
+    --panel:#ffffff;
+    --text:#222;
+    --muted:#6b7280;
+    --success:#2ecc71;
+    --danger:#e53935;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    text-align:center;
+    padding:16px 12px 8px;
+  }
+  header h1{margin:0;font-size:24px}
+  header p{margin:4px 0 0;color:var(--muted);font-size:14px}
+  main{
+    max-width:900px;
+    margin:0 auto;
+    padding:12px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+  }
+  #menu,#game,#ranking{display:none}
+  .level-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin:12px 0 8px;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:10px 14px;
+    border:none;
+    border-radius:10px;
+    background:var(--primary);
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
+    transition:.15s transform,.15s opacity,.15s box-shadow;
+    box-shadow:0 2px 8px rgba(30,136,229,.25);
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+  .btn-accent{background:var(--accent)}
+  .btn-ghost{
+    background:transparent;
+    color:var(--primary);
+    border:1px solid #d1e3fb;
+    box-shadow:none;
+  }
+  .top-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin:8px 0 4px;
+  }
+
+  /* Game layout */
+  .game-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  @media(min-width:800px){
+    .game-grid{
+      grid-template-columns:320px 1fr;
+      align-items:start;
+    }
+  }
+  .canvas-wrap{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:8px;
+    position:relative;
+    overflow:hidden;
+  }
+  #canvas{
+    width:100%;
+    height:auto;
+    display:block;
+    background:#fff;
+    border-radius:8px;
+  }
+  .info{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .word{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:28px;
+    letter-spacing:6px;
+    text-align:center;
+    padding:10px 8px;
+    background:#fafbff;
+    border:1px dashed #c7d2fe;
+    border-radius:10px;
+  }
+  .stats{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    color:#374151;
+    font-size:14px;
+  }
+  .badge{
+    background:#eef2ff;
+    color:#3730a3;
+    border:1px solid #c7d2fe;
+    padding:6px 10px;
+    border-radius:20px;
+  }
+  #hints p{
+    margin:4px 0;
+    padding:6px 8px;
+    background:#fff7ed;
+    border:1px solid #ffedd5;
+    border-radius:8px;
+    font-size:14px;
+  }
+  #keyboard{
+    display:grid;
+    grid-template-columns:repeat(10,1fr);
+    gap:6px;
+    margin-top:6px;
+  }
+  #keyboard button{
+    padding:10px 0;
+    border:none;
+    border-radius:8px;
+    background:#2563eb;
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
+    transition:.15s transform,.15s opacity;
+  }
+  #keyboard button:hover{transform:translateY(-1px)}
+  #keyboard button:disabled{background:#cbd5e1;color:#64748b;transform:none}
+  .section-title{
+    margin:0 0 8px;
+    font-size:18px;
+    color:#111827;
+  }
+
+  /* Shake effect applied to canvas wrapper (group shake) */
+  .shake{animation:shake .35s ease-in-out}
+  @keyframes shake{
+    0%{transform:translate(0,0)}
+    20%{transform:translate(-5px,0)}
+    40%{transform:translate(5px,0)}
+    60%{transform:translate(-4px,0)}
+    80%{transform:translate(4px,0)}
+    100%{transform:translate(0,0)}
+  }
+
+  /* Dialog-like footer area after game end */
+  .end-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    margin-top:8px;
+  }
+
+  /* Ranking tables */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:10px;
+  }
+  thead th{
+    background:#eef2ff;
+    color:#3730a3;
+    border-bottom:1px solid #c7d2fe;
+    padding:10px;
+    text-align:left;
+    font-size:14px;
+  }
+  tbody td{
+    border-bottom:1px solid #f1f5f9;
+    padding:10px;
+    font-size:14px;
+  }
+  tbody tr:nth-child(even){background:#fafafa}
+
+  .small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Jogo da Forca — Inglês</h1>
+  <p>Aprenda com dicas bilíngues, escolha o nível e dispute o ranking.</p>
+</header>
+<main>
+  <section id="menu" class="panel" style="display:block">
+    <h2 class="section-title">Selecione o nível</h2>
+    <div class="level-grid">
+      <button class="btn" onclick="startGame('facil')">Fácil</button>
+      <button class="btn" onclick="startGame('normal')">Normal</button>
+      <button class="btn" onclick="startGame('extremo')">Extremo</button>
+    </div>
+    <div class="top-actions">
+      <button class="btn-ghost btn" onclick="showRanking()">Ver ranking</button>
+    </div>
+  </section>
+
+  <section id="game" class="panel">
+    <div class="stats">
+      <span class="badge" id="levelBadge">Nível: —</span>
+      <span class="badge">Erros: <strong id="errorsCount">0</strong>/6</span>
+      <span class="badge">Dicas usadas: <strong id="hintsCount">0</strong>/5</span>
+    </div>
+    <div class="game-grid">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="canvas" width="260" height="260"></canvas>
+      </div>
+      <div class="info">
+        <div id="word" class="word">_ _ _</div>
+        <div id="hints"></div>
+        <div class="top-actions">
+          <button id="hintBtn" class="btn btn-accent">Pedir dica</button>
+          <button id="giveUpBtn" class="btn btn-ghost">Desistir</button>
+        </div>
+        <div id="keyboard"></div>
+        <div class="end-actions" id="endActions" style="display:none">
+          <button id="newGameBtn" class="btn">Nova partida</button>
+          <button id="menuBtn" class="btn btn-ghost">Voltar ao menu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ranking" class="panel">
+    <h2 class="section-title">Ranking</h2>
+    <p class="small">As pontuações ficam salvas neste dispositivo.</p>
+    <h3 class="section-title">Top 10 — Pontos cumulativos</h3>
+    <table>
+      <thead><tr><th>#</th><th>Iniciais</th><th>Pontos totais</th><th>Melhor partida</th></tr></thead>
+      <tbody id="rankingCumulative"></tbody>
+    </table>
+    <h3 class="section-title" style="margin-top:16px">Top 10 — Melhor partida</h3>
+    <table>
+      <thead><tr><th>#</th><th>Iniciais</th><th>Melhor partida</th><th>Pontos totais</th></tr></thead>
+      <tbody id="rankingBest"></tbody>
+    </table>
+    <div class="top-actions" style="margin-top:12px">
+      <button id="backMenuBtn" class="btn btn-ghost">Voltar ao menu</button>
+      <button id="resetRankingBtn" class="btn btn-ghost">Zerar ranking</button>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+/* =======================
+   Biblioteca de palavras
+   ======================= */
+const wordBank = {
+  facil: [
+    { word: "apple", hints:[
+      {pt:"É uma fruta", en:"It is a fruit"},
+      {pt:"Pode ser vermelha ou verde", en:"It can be red or green"},
+      {pt:"Cresce em árvores", en:"Grows on trees"},
+      {pt:"Usada para fazer tortas", en:"Used to make pies"},
+      {pt:"Tem sementes pequenas", en:"Has small seeds"}
+    ]},
+    { word: "dog", hints:[
+      {pt:"Animal doméstico", en:"Domestic animal"},
+      {pt:"Late", en:"Barks"},
+      {pt:"Tem quatro patas", en:"Has four legs"},
+      {pt:"Gosta de ossos", en:"Likes bones"},
+      {pt:"Melhor amigo do homem", en:"Man's best friend"}
+    ]},
+    { word: "cat", hints:[
+      {pt:"Gosta de miar", en:"Likes to meow"},
+      {pt:"Animal doméstico", en:"Domestic animal"},
+      {pt:"Tem bigodes", en:"Has whiskers"},
+      {pt:"Gosta de caçar ratos", en:"Likes to hunt mice"},
+      {pt:"Pode ronronar", en:"Can purr"}
+    ]},
+    { word: "sun", hints:[
+      {pt:"Brilha no céu", en:"Shines in the sky"},
+      {pt:"Fonte de luz e calor", en:"Source of light and heat"},
+      {pt:"Estrela do nosso sistema", en:"Star of our system"},
+      {pt:"Nasce no leste", en:"Rises in the east"},
+      {pt:"Se põe no oeste", en:"Sets in the west"}
+    ]},
+    { word: "car", hints:[
+      {pt:"Meio de transporte", en:"Means of transport"},
+      {pt:"Tem rodas", en:"Has wheels"},
+      {pt:"Pode ser movido a gasolina", en:"Can run on gasoline"},
+      {pt:"Tem volante", en:"Has a steering wheel"},
+      {pt:"Pode ter quatro portas", en:"Can have four doors"}
+    ]},
+    { word: "book", hints:[
+      {pt:"Tem páginas", en:"Has pages"},
+      {pt:"Pode ser lido", en:"Can be read"},
+      {pt:"Pode ser de ficção", en:"Can be fiction"},
+      {pt:"Pode ser didático", en:"Can be educational"},
+      {pt:"Tem capa", en:"Has a cover"}
+    ]},
+    { word: "pen", hints:[
+      {pt:"Usado para escrever", en:"Used to write"},
+      {pt:"Contém tinta", en:"Contains ink"},
+      {pt:"Pode ser azul ou preta", en:"Can be blue or black"},
+      {pt:"Tem tampa", en:"Has a cap"},
+      {pt:"Pode ser esferográfica", en:"Can be ballpoint"}
+    ]},
+    { word: "milk", hints:[
+      {pt:"Bebida branca", en:"White drink"},
+      {pt:"Vem da vaca", en:"Comes from cow"},
+      {pt:"Usado em receitas", en:"Used in recipes"},
+      {pt:"Fonte de cálcio", en:"Source of calcium"},
+      {pt:"Pode ser integral ou desnatado", en:"Can be whole or skimmed"}
+    ]},
+    { word: "fish", hints:[
+      {pt:"Vive na água", en:"Lives in water"},
+      {pt:"Tem escamas", en:"Has scales"},
+      {pt:"Respira por brânquias", en:"Breathes through gills"},
+      {pt:"Pode ser de água doce ou salgada", en:"Can be freshwater or saltwater"},
+      {pt:"Nada usando nadadeiras", en:"Swims using fins"}
+    ]},
+    { word: "tree", hints:[
+      {pt:"Tem folhas", en:"Has leaves"},
+      {pt:"Tem tronco", en:"Has a trunk"},
+      {pt:"Produz sombra", en:"Provides shade"},
+      {pt:"Pode dar frutos", en:"Can bear fruits"},
+      {pt:"Absorve gás carbônico", en:"Absorbs carbon dioxide"}
+    ]},
+    { word: "ball", hints:[
+      {pt:"Usada em esportes", en:"Used in sports"},
+      {pt:"Pode ser redonda", en:"Can be round"},
+      {pt:"Pode quicar", en:"Can bounce"},
+      {pt:"Pode ser de futebol", en:"Can be for soccer"},
+      {pt:"Pode ser de basquete", en:"Can be for basketball"}
+    ]},
+    { word: "hat", hints:[
+      {pt:"Usado na cabeça", en:"Worn on the head"},
+      {pt:"Protege do sol", en:"Protects from the sun"},
+      {pt:"Pode ser de aba larga", en:"Can have a wide brim"},
+      {pt:"Pode ser de lã", en:"Can be made of wool"},
+      {pt:"Usado como acessório", en:"Used as an accessory"}
+    ]},
+    { word: "egg", hints:[
+      {pt:"Vem da galinha", en:"Comes from chicken"},
+      {pt:"Tem casca", en:"Has a shell"},
+      {pt:"Pode ser cozido", en:"Can be boiled"},
+      {pt:"Pode ser frito", en:"Can be fried"},
+      {pt:"Usado em bolos", en:"Used in cakes"}
+    ]},
+    { word: "cup", hints:[
+      {pt:"Usado para beber", en:"Used to drink"},
+      {pt:"Pode ser de vidro", en:"Can be made of glass"},
+      {pt:"Pode ser de plástico", en:"Can be made of plastic"},
+      {pt:"Tem alça", en:"Has a handle"},
+      {pt:"Pode conter café", en:"Can hold coffee"}
+    ]},
+    { word: "bed", hints:[
+      {pt:"Usado para dormir", en:"Used to sleep"},
+      {pt:"Tem colchão", en:"Has a mattress"},
+      {pt:"Pode ter travesseiros", en:"Can have pillows"},
+      {pt:"Pode ser de casal", en:"Can be double"},
+      {pt:"Tem lençóis", en:"Has sheets"}
+    ]},
+    { word: "map", hints:[
+      {pt:"Mostra lugares", en:"Shows places"},
+      {pt:"Pode ser de papel", en:"Can be made of paper"},
+      {pt:"Pode ser digital", en:"Can be digital"},
+      {pt:"Tem legendas", en:"Has legends"},
+      {pt:"Mostra distâncias", en:"Shows distances"}
+    ]},
+    { word: "key", hints:[
+      {pt:"Abre portas", en:"Opens doors"},
+      {pt:"Feita de metal", en:"Made of metal"},
+      {pt:"Tem dentes", en:"Has teeth"},
+      {pt:"Pode ser pequena", en:"Can be small"},
+      {pt:"Usada em fechaduras", en:"Used in locks"}
+    ]},
+    { word: "box", hints:[
+      {pt:"Pode guardar coisas", en:"Can store things"},
+      {pt:"Pode ser de papelão", en:"Can be cardboard"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Tem tampa", en:"Has a lid"},
+      {pt:"Pode ser decorada", en:"Can be decorated"}
+    ]},
+    { word: "ice", hints:[
+      {pt:"Água congelada", en:"Frozen water"},
+      {pt:"Frio", en:"Cold"},
+      {pt:"Pode derreter", en:"Can melt"},
+      {pt:"Usado em bebidas", en:"Used in drinks"},
+      {pt:"Pode formar gelo no inverno", en:"Can form in winter"}
+    ]},
+    { word: "toy", hints:[
+      {pt:"Crianças brincam", en:"Children play"},
+      {pt:"Pode ser de plástico", en:"Can be plastic"},
+      {pt:"Pode ser educativo", en:"Can be educational"},
+      {pt:"Pode ter cores vivas", en:"Can have bright colors"},
+      {pt:"Pode ser de pelúcia", en:"Can be plush"}
+    ]},
+    { word: "bag", hints:[
+      {pt:"Carrega objetos", en:"Carries objects"},
+      {pt:"Pode ser de couro", en:"Can be leather"},
+      {pt:"Pode ser de tecido", en:"Can be fabric"},
+      {pt:"Tem alças", en:"Has handles"},
+      {pt:"Pode ser mochila", en:"Can be a backpack"}
+    ]},
+    { word: "cow", hints:[
+      {pt:"Animal de fazenda", en:"Farm animal"},
+      {pt:"Dá leite", en:"Gives milk"},
+      {pt:"Tem chifres", en:"Has horns"},
+      {pt:"Come capim", en:"Eats grass"},
+      {pt:"Muge", en:"Moos"}
+    ]},
+    { word: "pig", hints:[
+      {pt:"Animal rosa", en:"Pink animal"},
+      {pt:"Vive na fazenda", en:"Lives on a farm"},
+      {pt:"Gosta de lama", en:"Likes mud"},
+      {pt:"Faz o som 'oinc'", en:"Makes the sound 'oink'"},
+      {pt:"Pode ser criado para carne", en:"Can be raised for meat"}
+    ]},
+    { word: "bee", hints:[
+      {pt:"Produz mel", en:"Produces honey"},
+      {pt:"Tem ferrão", en:"Has a stinger"},
+      {pt:"Poliniza flores", en:"Pollinates flowers"},
+      {pt:"Vive em colmeias", en:"Lives in hives"},
+      {pt:"Faz o som 'zumbido'", en:"Makes a buzzing sound"}
+    ]},
+    { word: "ant", hints:[
+      {pt:"Inseto pequeno", en:"Small insect"},
+      {pt:"Vive em formigueiros", en:"Lives in anthills"},
+      {pt:"Trabalha em grupo", en:"Works in groups"},
+      {pt:"Carrega objetos maiores que ela", en:"Carries objects bigger than itself"},
+      {pt:"Tem seis patas", en:"Has six legs"}
+    ]}
+  ],
+  normal: [
+    { word: "house", hints:[
+      {pt:"Lugar para morar", en:"Place to live"},
+      {pt:"Tem quartos", en:"Has rooms"},
+      {pt:"Pode ter jardim", en:"Can have a garden"},
+      {pt:"Pode ser de madeira ou tijolo", en:"Can be made of wood or brick"},
+      {pt:"Protege do clima", en:"Protects from weather"}
+    ]},
+    { word: "table", hints:[
+      {pt:"Tem pernas", en:"Has legs"},
+      {pt:"Usada para refeições", en:"Used for meals"},
+      {pt:"Pode ser de madeira ou vidro", en:"Can be made of wood or glass"},
+      {pt:"Pode ter gavetas", en:"Can have drawers"},
+      {pt:"Usada para apoiar objetos", en:"Used to support objects"}
+    ]},
+    { word: "banana", hints:[
+      {pt:"Fruta amarela", en:"Yellow fruit"},
+      {pt:"Cresce em cachos", en:"Grows in bunches"},
+      {pt:"Macacos adoram", en:"Monkeys love it"},
+      {pt:"Fonte de potássio", en:"Source of potassium"},
+      {pt:"Tem casca", en:"Has a peel"}
+    ]},
+    { word: "school", hints:[
+      {pt:"Lugar de estudo", en:"Place of study"},
+      {pt:"Tem professores", en:"Has teachers"},
+      {pt:"Tem alunos", en:"Has students"},
+      {pt:"Tem salas de aula", en:"Has classrooms"},
+      {pt:"Pode ter biblioteca", en:"May have a library"}
+    ]},
+    { word: "window", hints:[
+      {pt:"Deixa entrar luz", en:"Lets light in"},
+      {pt:"Pode ser aberta", en:"Can be opened"},
+      {pt:"Feita de vidro", en:"Made of glass"},
+      {pt:"Pode ter cortinas", en:"May have curtains"},
+      {pt:"Pode ter grades", en:"May have bars"}
+    ]},
+    { word: "garden", hints:[
+      {pt:"Tem plantas", en:"Has plants"},
+      {pt:"Pode ter flores", en:"May have flowers"},
+      {pt:"Pode ter árvores", en:"May have trees"},
+      {pt:"Precisa de cuidados", en:"Needs care"},
+      {pt:"Pode ter gramado", en:"May have lawn"}
+    ]},
+    { word: "planet", hints:[
+      {pt:"Corpo celeste", en:"Celestial body"},
+      {pt:"Gira em torno de uma estrela", en:"Orbits a star"},
+      {pt:"Pode ter luas", en:"May have moons"},
+      {pt:"Tem gravidade", en:"Has gravity"},
+      {pt:"A Terra é um", en:"Earth is one"}
+    ]},
+    { word: "guitar", hints:[
+      {pt:"Instrumento musical", en:"Musical instrument"},
+      {pt:"Tem cordas", en:"Has strings"},
+      {pt:"Pode ser elétrica", en:"Can be electric"},
+      {pt:"Pode ser acústica", en:"Can be acoustic"},
+      {pt:"Tocada com os dedos ou palheta", en:"Played with fingers or pick"}
+    ]},
+    { word: "cheese", hints:[
+      {pt:"Feito de leite", en:"Made from milk"},
+      {pt:"Pode ser amarelo ou branco", en:"Can be yellow or white"},
+      {pt:"Usado em sanduíches", en:"Used in sandwiches"},
+      {pt:"Pode ter buracos", en:"Can have holes"},
+      {pt:"Pode ser curado", en:"Can be aged"}
+    ]},
+    { word: "butter", hints:[
+      {pt:"Passa no pão", en:"Spread on bread"},
+      {pt:"Feito de leite", en:"Made from milk"},
+      {pt:"Amarelo", en:"Yellow"},
+      {pt:"Usado em receitas", en:"Used in recipes"},
+      {pt:"Pode ser salgado ou sem sal", en:"Can be salted or unsalted"}
+    ]},
+    { word: "rabbit", hints:[
+      {pt:"Tem orelhas grandes", en:"Has big ears"},
+      {pt:"Come cenouras", en:"Eats carrots"},
+      {pt:"Corre rápido", en:"Runs fast"},
+      {pt:"Tem pelo macio", en:"Has soft fur"},
+      {pt:"Pode viver em tocas", en:"Can live in burrows"}
+    ]},
+    { word: "monkey", hints:[
+      {pt:"Sobe em árvores", en:"Climbs trees"},
+      {pt:"Come frutas", en:"Eats fruits"},
+      {pt:"Tem cauda", en:"Has a tail"},
+      {pt:"É mamífero", en:"Is a mammal"},
+      {pt:"Pode viver em florestas", en:"Can live in forests"}
+    ]},
+    { word: "camera", hints:[
+      {pt:"Tira fotos", en:"Takes photos"},
+      {pt:"Pode ser digital", en:"Can be digital"},
+      {pt:"Pode ser analógica", en:"Can be analog"},
+      {pt:"Tem lente", en:"Has a lens"},
+      {pt:"Usada para registrar momentos", en:"Used to capture moments"}
+    ]},
+    { word: "doctor", hints:[
+      {pt:"Cuida da saúde", en:"Cares for health"},
+      {pt:"Trabalha em hospitais", en:"Works in hospitals"},
+      {pt:"Usa jaleco branco", en:"Wears a white coat"},
+      {pt:"Pode receitar remédios", en:"Can prescribe medicine"},
+      {pt:"Estuda medicina", en:"Studies medicine"}
+    ]},
+    { word: "giraffe", hints:[
+      {pt:"Animal com pescoço longo", en:"Animal with a long neck"},
+      {pt:"Vive na savana", en:"Lives in the savannah"},
+      {pt:"Come folhas de árvores altas", en:"Eats leaves from tall trees"},
+      {pt:"Tem manchas no corpo", en:"Has spots on its body"},
+      {pt:"É o animal mais alto do mundo", en:"Is the tallest animal in the world"}
+    ]},
+    { word: "ticket", hints:[
+      {pt:"Entrada para evento", en:"Event entry"},
+      {pt:"Pode ser de papel", en:"Can be paper"},
+      {pt:"Pode ser digital", en:"Can be digital"},
+      {pt:"Usado em transportes", en:"Used in transportation"},
+      {pt:"Tem data e hora", en:"Has date and time"}
+    ]},
+    { word: "pencil", hints:[
+      {pt:"Usado para escrever", en:"Used to write"},
+      {pt:"Feito de madeira", en:"Made of wood"},
+      {pt:"Tem grafite", en:"Has graphite"},
+      {pt:"Pode ser apontado", en:"Can be sharpened"},
+      {pt:"Pode ter borracha na ponta", en:"Can have an eraser on top"}
+    ]},
+    { word: "orange", hints:[
+      {pt:"Fruta cítrica", en:"Citrus fruit"},
+      {pt:"Cor laranja", en:"Orange color"},
+      {pt:"Fonte de vitamina C", en:"Source of vitamin C"},
+      {pt:"Tem gomos", en:"Has segments"},
+      {pt:"Tem casca grossa", en:"Has thick peel"}
+    ]},
+    { word: "purple", hints:[
+      {pt:"Uma cor", en:"A color"},
+      {pt:"Mistura de azul e vermelho", en:"Mix of blue and red"},
+      {pt:"Associada à realeza", en:"Associated with royalty"},
+      {pt:"Pode estar em flores", en:"Can be in flowers"},
+      {pt:"Pode estar em roupas", en:"Can be in clothes"}
+    ]},
+    { word: "silver", hints:[
+      {pt:"Metal precioso", en:"Precious metal"},
+      {pt:"Cor cinza brilhante", en:"Shiny gray color"},
+      {pt:"Usado em joias", en:"Used in jewelry"},
+      {pt:"Bom condutor de eletricidade", en:"Good conductor of electricity"},
+      {pt:"Símbolo químico Ag", en:"Chemical symbol Ag"}
+    ]},
+    { word: "castle", hints:[
+      {pt:"Fortaleza antiga", en:"Ancient fortress"},
+      {pt:"Feito de pedra", en:"Made of stone"},
+      {pt:"Tem torres", en:"Has towers"},
+      {pt:"Protegia reis e rainhas", en:"Protected kings and queens"},
+      {pt:"Pode ter fosso", en:"May have a moat"}
+    ]},
+    { word: "forest", hints:[
+      {pt:"Muitas árvores", en:"Many trees"},
+      {pt:"Habitat de animais", en:"Animal habitat"},
+      {pt:"Pode ser tropical", en:"Can be tropical"},
+      {pt:"Pode ser temperada", en:"Can be temperate"},
+      {pt:"Importante para o oxigênio", en:"Important for oxygen"}
+    ]},
+    { word: "market", hints:[
+      {pt:"Lugar de compras", en:"Shopping place"},
+      {pt:"Pode ser ao ar livre", en:"Can be outdoors"},
+      {pt:"Pode vender comida", en:"Can sell food"},
+      {pt:"Pode vender roupas", en:"Can sell clothes"},
+      {pt:"Tem vendedores", en:"Has sellers"}
+    ]},
+    { word: "family", hints:[
+      {pt:"Pessoas próximas", en:"Close people"},
+      {pt:"Pode ter pais e filhos", en:"Can have parents and children"},
+      {pt:"Pode incluir avós", en:"Can include grandparents"},
+      {pt:"Vive junto ou separado", en:"Lives together or apart"},
+      {pt:"Importante para apoio", en:"Important for support"}
+    ]},
+    { word: "friend", hints:[
+      {pt:"Pessoa querida", en:"Dear person"},
+      {pt:"Companhia", en:"Companion"},
+      {pt:"Pode ajudar", en:"Can help"},
+      {pt:"Compartilha momentos", en:"Shares moments"},
+      {pt:"Pode ser de longa data", en:"Can be long-time"}
+    ]},
+    { word: "coffee", hints:[
+      {pt:"Bebida energética", en:"Energizing drink"},
+      {pt:"Feita de grãos torrados", en:"Made from roasted beans"},
+      {pt:"Pode ser quente ou gelado", en:"Can be hot or iced"},
+      {pt:"Tem cafeína", en:"Has caffeine"},
+      {pt:"Muito popular no Brasil", en:"Very popular in Brazil"}
+    ]},
+     { word: "butterfly", hints:[
+      {pt:"Inseto com asas", en:"Insect with wings"},
+      {pt:"Colorida", en:"Colorful"},
+      {pt:"Passa por metamorfose", en:"Goes through metamorphosis"},
+      {pt:"Come néctar", en:"Eats nectar"},
+      {pt:"Tem antenas", en:"Has antennas"}
+    ]},
+    { word: "summer", hints:[
+      {pt:"Estação quente", en:"Hot season"},
+      {pt:"Dias longos", en:"Long days"},
+      {pt:"Férias escolares", en:"School holidays"},
+      {pt:"Praia cheia", en:"Crowded beaches"},
+      {pt:"Frutas tropicais", en:"Tropical fruits"}
+    ]},
+    { word: "winter", hints:[
+      {pt:"Estação fria", en:"Cold season"},
+      {pt:"Dias curtos", en:"Short days"},
+      {pt:"Pode nevar", en:"Can snow"},
+      {pt:"Usa-se casacos", en:"Wear coats"},
+      {pt:"Bebidas quentes", en:"Hot drinks"}
+    ]},
+    { word: "bridge", hints:[
+      {pt:"Liga dois lugares", en:"Connects two places"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Pode ser de concreto", en:"Can be concrete"},
+      {pt:"Passa sobre rios ou estradas", en:"Goes over rivers or roads"},
+      {pt:"Pode ser suspensa", en:"Can be suspended"}
+    ]},
+    { word: "market", hints:[
+      {pt:"Lugar de compras", en:"Shopping place"},
+      {pt:"Pode ser ao ar livre", en:"Can be outdoors"},
+      {pt:"Pode vender comida", en:"Can sell food"},
+      {pt:"Pode vender roupas", en:"Can sell clothes"},
+      {pt:"Tem vendedores", en:"Has sellers"}
+    ]},
+    { word: "family", hints:[
+      {pt:"Pessoas próximas", en:"Close people"},
+      {pt:"Pode ter pais e filhos", en:"Can have parents and children"},
+      {pt:"Pode incluir avós", en:"Can include grandparents"},
+      {pt:"Vive junto ou separado", en:"Lives together or apart"},
+      {pt:"Importante para apoio", en:"Important for support"}
+    ]},
+    { word: "friend", hints:[
+      {pt:"Pessoa querida", en:"Dear person"},
+      {pt:"Companhia", en:"Companion"},
+      {pt:"Pode ajudar", en:"Can help"},
+      {pt:"Compartilha momentos", en:"Shares moments"},
+      {pt:"Pode ser de longa data", en:"Can be long-time"}
+    ]},
+    { word: "coffee", hints:[
+      {pt:"Bebida energética", en:"Energizing drink"},
+      {pt:"Feita de grãos torrados", en:"Made from roasted beans"},
+      {pt:"Pode ser quente ou gelado", en:"Can be hot or iced"},
+      {pt:"Tem cafeína", en:"Has caffeine"},
+      {pt:"Muito popular no Brasil", en:"Very popular in Brazil"}
+    ]},
+    { word: "library", hints:[
+      {pt:"Lugar de livros", en:"Place of books"},
+      {pt:"Silencioso", en:"Quiet"},
+      {pt:"Pode ter computadores", en:"May have computers"},
+      {pt:"Empresta livros", en:"Lends books"},
+      {pt:"Tem estantes", en:"Has shelves"}
+    ]},
+    { word: "bridge", hints:[
+      {pt:"Liga dois lugares", en:"Connects two places"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Pode ser de concreto", en:"Can be concrete"},
+      {pt:"Passa sobre rios ou estradas", en:"Goes over rivers or roads"},
+      {pt:"Pode ser suspensa", en:"Can be suspended"}
+    ]},
+    { word: "travel", hints:[
+      {pt:"Ir para outro lugar", en:"Go to another place"},
+      {pt:"Pode ser de avião", en:"Can be by plane"},
+      {pt:"Pode ser de carro", en:"Can be by car"},
+      {pt:"Pode ser de navio", en:"Can be by ship"},
+      {pt:"Pode ser de trem", en:"Can be by train"}
+    ]},
+    { word: "bridge", hints:[
+      {pt:"Liga dois lugares", en:"Connects two places"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Pode ser de concreto", en:"Can be concrete"},
+      {pt:"Passa sobre rios ou estradas", en:"Goes over rivers or roads"},
+      {pt:"Pode ser suspensa", en:"Can be suspended"}
+    ]},
+    { word: "bridge", hints:[
+      {pt:"Liga dois lugares", en:"Connects two places"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Pode ser de concreto", en:"Can be concrete"},
+      {pt:"Passa sobre rios ou estradas", en:"Goes over rivers or roads"},
+      {pt:"Pode ser suspensa", en:"Can be suspended"}
+    ]},
+    { word: "bridge", hints:[
+      {pt:"Liga dois lugares", en:"Connects two places"},
+      {pt:"Pode ser de madeira", en:"Can be wooden"},
+      {pt:"Pode ser de concreto", en:"Can be concrete"},
+      {pt:"Passa sobre rios ou estradas", en:"Goes over rivers or roads"},
+      {pt:"Pode ser suspensa", en:"Can be suspended"}
+    ]},
+    ],
+    extremo: [
+    { word: "astronomy", hints:[
+      {pt:"Estudo dos astros", en:"Study of celestial bodies"},
+      {pt:"Inclui planetas e estrelas", en:"Includes planets and stars"},
+      {pt:"Usa telescópios", en:"Uses telescopes"},
+      {pt:"Pode observar galáxias", en:"Can observe galaxies"},
+      {pt:"Relaciona-se com física", en:"Related to physics"}
+    ]},
+    { word: "philosophy", hints:[
+      {pt:"Estudo do saber", en:"Study of knowledge"},
+      {pt:"Inclui ética e lógica", en:"Includes ethics and logic"},
+      {pt:"Grandes pensadores", en:"Great thinkers"},
+      {pt:"Busca compreender a existência", en:"Seeks to understand existence"},
+      {pt:"Pode ser antiga ou moderna", en:"Can be ancient or modern"}
+    ]},
+    { word: "architecture", hints:[
+      {pt:"Projetos de edifícios", en:"Building design"},
+      {pt:"Inclui estética e função", en:"Includes aesthetics and function"},
+      {pt:"Pode ser moderna ou clássica", en:"Can be modern or classical"},
+      {pt:"Usa plantas e maquetes", en:"Uses blueprints and models"},
+      {pt:"Relaciona-se com engenharia", en:"Related to engineering"}
+    ]},
+    { word: "entrepreneur", hints:[
+      {pt:"Inicia negócios", en:"Starts businesses"},
+      {pt:"Assume riscos", en:"Takes risks"},
+      {pt:"Busca lucro", en:"Seeks profit"},
+      {pt:"Cria oportunidades", en:"Creates opportunities"},
+      {pt:"Pode inovar no mercado", en:"Can innovate in the market"}
+    ]},
+    { word: "psychology", hints:[
+      {pt:"Estudo da mente", en:"Study of the mind"},
+      {pt:"Analisa comportamento", en:"Analyzes behavior"},
+      {pt:"Pode tratar distúrbios", en:"Can treat disorders"},
+      {pt:"Relaciona-se com emoções", en:"Related to emotions"},
+      {pt:"Usa testes e entrevistas", en:"Uses tests and interviews"}
+    ]},
+    { word: "environment", hints:[
+      {pt:"Meio ao redor", en:"Surrounding world"},
+      {pt:"Inclui natureza", en:"Includes nature"},
+      {pt:"Afetado pela poluição", en:"Affected by pollution"},
+      {pt:"Importante para a vida", en:"Important for life"},
+      {pt:"Pode ser preservado", en:"Can be preserved"}
+    ]},
+    { word: "biodiversity", hints:[
+      {pt:"Variedade da vida", en:"Variety of life"},
+      {pt:"Inclui plantas e animais", en:"Includes plants and animals"},
+      {pt:"Importante para ecossistemas", en:"Important for ecosystems"},
+      {pt:"Ameaçada pelo desmatamento", en:"Threatened by deforestation"},
+      {pt:"Mantém equilíbrio natural", en:"Maintains natural balance"}
+    ]},
+    { word: "responsibility", hints:[
+      {pt:"Dever e obrigação", en:"Duty and obligation"},
+      {pt:"Assumir consequências", en:"Take responsibility"},
+      {pt:"Cumprir tarefas", en:"Fulfill tasks"},
+      {pt:"Importante no trabalho", en:"Important at work"},
+      {pt:"Relaciona-se com confiança", en:"Related to trust"}
+    ]},
+    { word: "characteristic", hints:[
+      {pt:"Qualidade distintiva", en:"Distinctive quality"},
+      {pt:"Pode ser física", en:"Can be physical"},
+      {pt:"Pode ser de personalidade", en:"Can be of personality"},
+      {pt:"Ajuda a identificar", en:"Helps to identify"},
+      {pt:"Pode ser única", en:"Can be unique"}
+    ]},
+    { word: "infrastructure", hints:[
+      {pt:"Base de serviços", en:"Basic facilities"},
+      {pt:"Inclui estradas e pontes", en:"Includes roads and bridges"},
+      {pt:"Inclui energia e água", en:"Includes energy and water"},
+      {pt:"Necessária para cidades", en:"Necessary for cities"},
+      {pt:"Pode ser pública ou privada", en:"Can be public or private"}
+    ]},
+    { word: "sustainability", hints:[
+      {pt:"Uso consciente", en:"Conscious use"},
+      {pt:"Preserva recursos", en:"Preserves resources"},
+      {pt:"Relaciona-se com o meio ambiente", en:"Related to the environment"},
+      {pt:"Evita desperdício", en:"Avoids waste"},
+      {pt:"Busca equilíbrio", en:"Seeks balance"}
+    ]},
+    { word: "communication", hints:[
+      {pt:"Troca de informações", en:"Exchange of information"},
+      {pt:"Pode ser verbal", en:"Can be verbal"},
+      {pt:"Pode ser não verbal", en:"Can be non-verbal"},
+      {pt:"Usa linguagem", en:"Uses language"},
+      {pt:"Importante para relacionamentos", en:"Important for relationships"}
+    ]},
+    { word: "extraordinary", hints:[
+      {pt:"Fora do comum", en:"Out of the ordinary"},
+      {pt:"Impressionante", en:"Impressive"},
+      {pt:"Pode ser positivo ou negativo", en:"Can be positive or negative"},
+      {pt:"Chama atenção", en:"Draws attention"},
+      {pt:"Raro", en:"Rare"}
+    ]},
+    { word: "acknowledgment", hints:[
+      {pt:"Reconhecimento", en:"Recognition"},
+      {pt:"Pode ser formal", en:"Can be formal"},
+      {pt:"Pode ser agradecimento", en:"Can be gratitude"},
+      {pt:"Demonstra atenção", en:"Shows attention"},
+      {pt:"Importante em relações", en:"Important in relationships"}
+    ]},
+    { word: "neighborhood", hints:[
+      {pt:"Vizinhança", en:"Neighborhood"},
+      {pt:"Área residencial", en:"Residential area"},
+      {pt:"Tem ruas e casas", en:"Has streets and houses"},
+      {pt:"Pode ter comércio", en:"May have shops"},
+      {pt:"Comunidade local", en:"Local community"}
+    ]},
+    { word: "characterization", hints:[
+      {pt:"Descrever traços", en:"Describe traits"},
+      {pt:"Pode ser de personagem", en:"Can be of a character"},
+      {pt:"Usado em literatura", en:"Used in literature"},
+      {pt:"Ajuda a entender", en:"Helps to understand"},
+      {pt:"Pode ser física ou psicológica", en:"Can be physical or psychological"}
+    ]},
+    { word: "congratulations", hints:[
+      {pt:"Parabenização", en:"Expression of praise"},
+      {pt:"Usado em conquistas", en:"Used for achievements"},
+      {pt:"Pode ser verbal", en:"Can be verbal"},
+      {pt:"Pode ser escrito", en:"Can be written"},
+      {pt:"Expressa alegria", en:"Expresses joy"}
+    ]},
+    { word: "misinterpretation", hints:[
+      {pt:"Entendimento errado", en:"Wrong understanding"},
+      {pt:"Pode causar problemas", en:"Can cause problems"},
+      {pt:"Oposto de interpretação correta", en:"Opposite of correct interpretation"},
+      {pt:"Pode ser de palavras", en:"Can be of words"},
+      {pt:"Pode ser de ações", en:"Can be of actions"}
+    ]},
+    { word: "implementation", hints:[
+      {pt:"Colocar em prática", en:"Put into practice"},
+      {pt:"Executar um plano", en:"Execute a plan"},
+      {pt:"Passo após planejamento", en:"Step after planning"},
+      {pt:"Pode ser gradual", en:"Can be gradual"},
+      {pt:"Pode ser imediata", en:"Can be immediate"}
+    ]},
+    { word: "comprehensive", hints:[
+      {pt:"Abrangente", en:"Broad in scope"},
+      {pt:"Inclui muitos detalhes", en:"Includes many details"},
+      {pt:"Pode ser completo", en:"Can be complete"},
+      {pt:"Oposto de limitado", en:"Opposite of limited"},
+      {pt:"Pode ser profundo", en:"Can be thorough"}
+    ]},
+    { word: "sophisticated", hints:[
+      {pt:"Complexo e refinado", en:"Complex and refined"},
+      {pt:"Pode ser elegante", en:"Can be elegant"},
+      {pt:"Pode ser avançado", en:"Can be advanced"},
+      {pt:"Oposto de simples", en:"Opposite of simple"},
+      {pt:"Usado para pessoas ou coisas", en:"Used for people or things"}
+    ]},
+    { word: "magnificent", hints:[
+      {pt:"Magnífico", en:"Magnificent"},
+      {pt:"Impressionante", en:"Impressive"},
+      {pt:"Muito bonito", en:"Very beautiful"},
+      {pt:"Pode ser paisagem", en:"Can be a landscape"},
+      {pt:"Pode ser obra de arte", en:"Can be a work of art"}
+    ]},
+    { word: "hypothesis", hints:[
+      {pt:"Suposição", en:"Proposed explanation"},
+      {pt:"Base para pesquisa", en:"Basis for research"},
+      {pt:"Pode ser testada", en:"Can be tested"},
+      {pt:"Usada em ciência", en:"Used in science"},
+      {pt:"Pode ser confirmada ou refutada", en:"Can be confirmed or refuted"}
+    ]},
+    { word: "appreciation", hints:[
+      {pt:"Valorização", en:"Recognition of value"},
+      {pt:"Pode ser gratidão", en:"Can be gratitude"},
+      {pt:"Reconhecimento", en:"Acknowledgment"},
+      {pt:"Pode ser por arte", en:"Can be for art"},
+      {pt:"Pode ser por ajuda", en:"Can be for help"}
+    ]},
+    { word: "collaboration", hints:[
+      {pt:"Trabalho conjunto", en:"Working together"},
+      {pt:"Envolve cooperação", en:"Involves cooperation"},
+      {pt:"Pode ser em equipe", en:"Can be in a team"},
+      {pt:"Busca objetivo comum", en:"Seeks a common goal"},
+      {pt:"Importante em projetos", en:"Important in projects"}
+    ]},
+    { word: "determination", hints:[
+      {pt:"Firmeza de propósito", en:"Firmness of purpose"},
+      {pt:"Persistência", en:"Persistence"},
+      {pt:"Ajuda a alcançar metas", en:"Helps achieve goals"},
+      {pt:"Não desistir", en:"Not giving up"},
+      {pt:"Relaciona-se com motivação", en:"Related to motivation"}
+    ]},
+    { word: "transformation", hints:[
+      {pt:"Mudança completa", en:"Complete change"},
+      {pt:"Pode ser física", en:"Can be physical"},
+      {pt:"Pode ser mental", en:"Can be mental"},
+      {pt:"Pode ser positiva", en:"Can be positive"},
+      {pt:"Pode ser negativa", en:"Can be negative"}
+    ]},
+    { word: "overwhelming", hints:[
+      {pt:"Muito intenso", en:"Very intense"},
+      {pt:"Pode ser emocional", en:"Can be emotional"},
+      {pt:"Pode ser físico", en:"Can be physical"},
+      {pt:"Difícil de lidar", en:"Hard to handle"},
+      {pt:"Pode ser positivo ou negativo", en:"Can be positive or negative"}
+    ]},
+    { word: "unpredictable", hints:[
+      {pt:"Difícil de prever", en:"Hard to predict"},
+      {pt:"Pode mudar rapidamente", en:"Can change quickly"},
+      {pt:"Pode ser o clima", en:"Can be the weather"},
+      {pt:"Pode ser comportamento", en:"Can be behavior"},
+      {pt:"Oposto de estável", en:"Opposite of stable"}
+    ]},
+    { word: "misunderstanding", hints:[
+      {pt:"Falta de compreensão", en:"Lack of understanding"},
+      {pt:"Pode causar conflitos", en:"Can cause conflicts"},
+      {pt:"Pode ser por comunicação ruim", en:"Can be due to poor communication"},
+      {pt:"Oposto de entendimento", en:"Opposite of understanding"},
+      {pt:"Pode ser resolvido com diálogo", en:"Can be resolved with dialogue"}
+    ]},
+    { word: "extraordinary", hints:[
+      {pt:"Fora do comum", en:"Out of the ordinary"},
+      {pt:"Impressionante", en:"Impressive"},
+      {pt:"Raro", en:"Rare"},
+      {pt:"Pode ser positivo", en:"Can be positive"},
+      {pt:"Pode ser negativo", en:"Can be negative"}
+    ]},
+    { word: "revolutionary", hints:[
+      {pt:"Traz grande mudança", en:"Brings great change"},
+      {pt:"Pode ser político", en:"Can be political"},
+      {pt:"Pode ser tecnológico", en:"Can be technological"},
+      {pt:"Inovador", en:"Innovative"},
+      {pt:"Transforma sistemas", en:"Transforms systems"}
+    ]},
+    { word: "vulnerability", hints:[
+      {pt:"Estado de fragilidade", en:"State of fragility"},
+      {pt:"Pode ser emocional", en:"Can be emotional"},
+      {pt:"Pode ser física", en:"Can be physical"},
+      {pt:"Exige cuidado", en:"Requires care"},
+      {pt:"Oposto de invulnerabilidade", en:"Opposite of invulnerability"}
+    ]},
+    { word: "authenticity", hints:[
+      {pt:"Qualidade de ser verdadeiro", en:"Quality of being genuine"},
+      {pt:"Sem falsificação", en:"Without falsification"},
+      {pt:"Originalidade", en:"Originality"},
+      {pt:"Importante em relações", en:"Important in relationships"},
+      {pt:"Oposto de falsidade", en:"Opposite of falseness"}
+    ]},
+    { word: "perseverance", hints:[
+      {pt:"Persistência", en:"Persistence"},
+      {pt:"Continuar apesar das dificuldades", en:"Continue despite difficulties"},
+      {pt:"Ajuda a alcançar objetivos", en:"Helps achieve goals"},
+      {pt:"Relaciona-se com determinação", en:"Related to determination"},
+      {pt:"Oposto de desistência", en:"Opposite of giving up"}
+    ]}
+  ]
+}
+
+/* =======================
+   Estado do jogo
+   ======================= */
+let currentLevel = null;
+let selected = null;
+let guessed = [];
+let wrong = 0;
+let hintsUsed = 0;
+const maxErrors = 6;
+const maxHints = 5;
+let gameOver = false;
+
+/* Pontuação por nível */
+const scoring = {
+  facil: { base: 50, penalty: 5 },
+  normal:{ base: 100, penalty: 10 },
+  extremo:{ base: 200, penalty: 20 }
+};
+
+/* =======================
+   Seletores
+   ======================= */
+const menuSec = document.getElementById('menu');
+const gameSec = document.getElementById('game');
+const rankingSec = document.getElementById('ranking');
+
+const levelBadge = document.getElementById('levelBadge');
+const errorsCount = document.getElementById('errorsCount');
+const hintsCount = document.getElementById('hintsCount');
+
+const wordDiv = document.getElementById('word');
+const hintsDiv = document.getElementById('hints');
+const hintBtn = document.getElementById('hintBtn');
+const giveUpBtn = document.getElementById('giveUpBtn');
+const keyboardDiv = document.getElementById('keyboard');
+const endActions = document.getElementById('endActions');
+const menuBtn = document.getElementById('menuBtn');
+const newGameBtn = document.getElementById('newGameBtn');
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+
+/* Ranking */
+const rankingCumulative = document.getElementById('rankingCumulative');
+const rankingBest = document.getElementById('rankingBest');
+const backMenuBtn = document.getElementById('backMenuBtn');
+const resetRankingBtn = document.getElementById('resetRankingBtn');
+
+/* =======================
+   Utilitários
+   ======================= */
+const rand = (min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+const pick = arr => arr[rand(0,arr.length-1)];
+const normalize = s => s.toLowerCase().trim();
+
+/* =======================
+   Desenho do boneco
+   Ordem: 1 cabeça, 2 tronco, 3 braço E, 4 braço D, 5 perna E, 6 perna D
+   ======================= */
+function clearCanvas(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Forca básica
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#111";
+  // base
+  ctx.beginPath(); ctx.moveTo(20,235); ctx.lineTo(240,235); ctx.stroke();
+  // poste
+  ctx.beginPath(); ctx.moveTo(60,235); ctx.lineTo(60,20); ctx.lineTo(150,20); ctx.lineTo(150,45); ctx.stroke();
+}
+
+function drawPart(step){
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#111";
+  if(step===1){ // cabeça
+    ctx.beginPath(); ctx.arc(150,65,18,0,Math.PI*2); ctx.stroke();
+  }
+  if(step===2){ // tronco
+    ctx.beginPath(); ctx.moveTo(150,83); ctx.lineTo(150,135); ctx.stroke();
+  }
+  if(step===3){ // braço E
+    ctx.beginPath(); ctx.moveTo(150,95); ctx.lineTo(120,115); ctx.stroke();
+  }
+  if(step===4){ // braço D
+    ctx.beginPath(); ctx.moveTo(150,95); ctx.lineTo(180,115); ctx.stroke();
+  }
+  if(step===5){ // perna E
+    ctx.beginPath(); ctx.moveTo(150,135); ctx.lineTo(130,175); ctx.stroke();
+  }
+  if(step===6){ // perna D
+    ctx.beginPath(); ctx.moveTo(150,135); ctx.lineTo(170,175); ctx.stroke();
+  }
+  triggerShake();
+}
+
+/* Shake no grupo (canvas wrapper) */
+function triggerShake(){
+  canvasWrap.classList.remove('shake');
+  // força um reflow para reiniciar a animação
+  void canvasWrap.offsetWidth;
+  canvasWrap.classList.add('shake');
+}
+
+/* =======================
+   Lógica do jogo
+   ======================= */
+function startGame(level){
+  currentLevel = level;
+  selected = structuredClone(pick(wordBank[level]));
+  guessed = [];
+  wrong = 0;
+  hintsUsed = 0;
+  gameOver = false;
+
+  levelBadge.textContent = `Nível: ${levelLabel(level)}`;
+  errorsCount.textContent = wrong;
+  hintsCount.textContent = hintsUsed;
+
+  wordDiv.textContent = maskWord(selected.word, guessed);
+  hintsDiv.innerHTML = "";
+  hintBtn.disabled = false;
+  giveUpBtn.disabled = false;
+  endActions.style.display = 'none';
+
+  buildKeyboard();
+  menuSec.style.display = 'none';
+  rankingSec.style.display = 'none';
+  gameSec.style.display = 'block';
+
+  clearCanvas();
+}
+
+function levelLabel(lv){
+  if(lv==='facil') return 'Fácil';
+  if(lv==='normal') return 'Normal';
+  return 'Extremo';
+}
+
+function maskWord(word, guessedLetters){
+  return word.split('').map(ch => (guessedLetters.includes(ch)? ch : '_')).join(' ');
+}
+
+function buildKeyboard(){
+  keyboardDiv.innerHTML = "";
+  const letters = "abcdefghijklmnopqrstuvwxyz".split('');
+  letters.forEach(l=>{
+    const btn = document.createElement('button');
+    btn.textContent = l;
+    btn.addEventListener('click',()=>{
+      btn.disabled = true;
+      handleLetter(l);
+    });
+    keyboardDiv.appendChild(btn);
+  });
+}
+
+function handleLetter(letter){
+  if(gameOver) return;
+  const inWord = selected.word.includes(letter);
+  if(inWord){
+    guessed.push(letter);
+    wordDiv.textContent = maskWord(selected.word, guessed);
+    if(checkWin()){
+      onWin();
+    }
+  }else{
+    wrong++;
+    errorsCount.textContent = wrong;
+    drawPart(wrong);
+    if(wrong>=maxErrors){
+      onLose();
+    }
+  }
+}
+
+function checkWin(){
+  return !wordDiv.textContent.includes('_');
+}
+
+function onWin(){
+  gameOver = true;
+  disableInputs();
+  celebrate();
+  setTimeout(()=>{
+    askInitialsAndSaveScore(true);
+  }, 350);
+}
+
+function onLose(){
+  gameOver = true;
+  disableInputs();
+  revealWordMessage();
+  // oferece nova partida e menu
+  endActions.style.display = 'flex';
+}
+
+function disableInputs(){
+  document.querySelectorAll('#keyboard button').forEach(b => b.disabled = true);
+  hintBtn.disabled = true;
+  giveUpBtn.disabled = true;
+}
+
+/* Dicas */
+hintBtn.addEventListener('click', ()=>{
+  if(gameOver) return;
+  if(hintsUsed < Math.min(maxHints, (selected.hints?.length || 0))){
+    const h = selected.hints[hintsUsed];
+    const p = document.createElement('p');
+    p.textContent = `${h.pt} / ${h.en}`;
+    hintsDiv.appendChild(p);
+    hintsUsed++;
+    hintsCount.textContent = hintsUsed;
+  }else{
+    alert('Sem mais dicas para esta palavra.');
+  }
+});
+
+/* Desistir */
+giveUpBtn.addEventListener('click', ()=>{
+  if(gameOver) return;
+  wrong = maxErrors;
+  errorsCount.textContent = wrong;
+  // desenha as partes restantes para efeito visual
+  for(let s=1; s<=maxErrors; s++){
+    clearCanvas();
+    for(let i=1;i<=s;i++) drawPart(i);
+  }
+  onLose();
+});
+
+/* Nova partida e voltar ao menu */
+newGameBtn.addEventListener('click', ()=>{
+  startGame(currentLevel);
+});
+menuBtn.addEventListener('click', ()=>{
+  gameSec.style.display='none';
+  menuSec.style.display='block';
+});
+
+/* =======================
+   Mensagens e efeitos
+   ======================= */
+function celebrate(){
+  // confetes em rajadas
+  const duration = 1200;
+  const end = Date.now() + duration;
+  const colors = ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff'];
+  (function frame(){
+    confetti({
+      particleCount: 50,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors
+    });
+    confetti({
+      particleCount: 50,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors
+    });
+    if(Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+function revealWordMessage(){
+  setTimeout(()=>{
+    alert(`Fim de jogo! A palavra era: ${selected.word}`);
+  }, 150);
+}
+
+/* =======================
+   Pontuação e ranking
+   ======================= */
+function calcScore(win){
+  if(!win) return 0;
+  const {base, penalty} = scoring[currentLevel];
+  const points = Math.max(0, base - wrong * penalty);
+  return points;
+}
+
+function askInitialsAndSaveScore(win){
+  const score = calcScore(win);
+  const initials = prompt(`Você venceu! Pontos: ${score}\nDigite suas iniciais (3 letras):`, "").trim().toUpperCase();
+  if(!initials) {
+    endActions.style.display='flex';
+    return;
+  }
+  const valid = /^[A-Z]{1,3}$/.test(initials);
+  const tag = valid ? initials.padEnd(3,'_') : '???';
+
+  const board = loadRanking();
+  const idx = board.findIndex(p => p.initials === tag);
+  if(idx>=0){
+    board[idx].total += score;
+    board[idx].best = Math.max(board[idx].best, score);
+  }else{
+    board.push({ initials: tag, total: score, best: score });
+  }
+  saveRanking(board);
+  endActions.style.display='flex';
+}
+
+function loadRanking(){
+  try{
+    const raw = localStorage.getItem('hangmanRanking');
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr)) return arr;
+    return [];
+  }catch(e){
+    return [];
+  }
+}
+function saveRanking(arr){
+  localStorage.setItem('hangmanRanking', JSON.stringify(arr));
+}
+
+function showRanking(){
+  menuSec.style.display = 'none';
+  gameSec.style.display = 'none';
+  rankingSec.style.display = 'block';
+  renderRanking();
+}
+
+function renderRanking(){
+  const board = loadRanking();
+  const topCum = [...board].sort((a,b)=>b.total - a.total).slice(0,10);
+  const topBest = [...board].sort((a,b)=>b.best - a.best).slice(0,10);
+
+  rankingCumulative.innerHTML = topCum.map((p,i)=>
+    `<tr><td>${i+1}</td><td>${p.initials}</td><td>${p.total}</td><td>${p.best}</td></tr>`
+  ).join('') || `<tr><td colspan="4">Ainda não há pontuações.</td></tr>`;
+
+  rankingBest.innerHTML = topBest.map((p,i)=>
+    `<tr><td>${i+1}</td><td>${p.initials}</td><td>${p.best}</td><td>${p.total}</td></tr>`
+  ).join('') || `<tr><td colspan="4">Ainda não há pontuações.</td></tr>`;
+}
+
+backMenuBtn.addEventListener('click', ()=>{
+  rankingSec.style.display='none';
+  menuSec.style.display='block';
+});
+resetRankingBtn.addEventListener('click', ()=>{
+  if(confirm('Deseja realmente zerar o ranking deste dispositivo?')){
+    localStorage.removeItem('hangmanRanking');
+    renderRanking();
+  }
+});
+
+/* =======================
+   Inicialização
+   ======================= */
+function init(){
+  clearCanvas();
+}
+init();
+
+/* =======================
+   Atalhos de teclado (opcional em desktop)
+   ======================= */
+document.addEventListener('keydown', (e)=>{
+  if(gameSec.style.display !== 'block') return;
+  const k = e.key.toLowerCase();
+  if(k.length===1 && k>='a' && k<='z'){
+    const btn = Array.from(document.querySelectorAll('#keyboard button')).find(b=>b.textContent===k);
+    if(btn && !btn.disabled) btn.click();
+  }
+});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(() => console.log("Service Worker registrado!"))
+    .catch(err => console.log("Erro no Service Worker:", err));
+}
+</script>
+</body>
+</html>
